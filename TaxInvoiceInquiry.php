@@ -8,7 +8,7 @@
  * @Author: ChengJiang
  * @Date: 2020-04-27 21:16:58
  * @LastEditors: ChengJiang
- * @LastEditTime: 2020-05-06 09:57:44
+ * @LastEditTime: 2020-07-19 07:43:53
  */
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
@@ -223,7 +223,7 @@ if (!isset($_POST['ExportExcel'])){
 		echo '<tr>
 				<td> 发票号码:</td>	
 				<td colspan="2">
-					<input type="text"  name="InvNo"  id="InvNo" size="25" maxlength="30"  value="'.$_POST['InvNo'].'"  onchange="disableinv(this);" pattern="((\d{1,15}-\d{1,15})?|(\d{1,15},?\d{1,15}){0,10}|\s)"  placeholder="输入单票号或多票号,使用分隔符 -或,"  />
+					<input type="text"  name="InvNo"  id="InvNo" size="25" maxlength="30"  value="'.$_POST['InvNo'].'"  onchange="disableinv(this);" pattern="((\d{1,15}-\d{1,15})?|(\d{1,15},?\d{1,15}){0,10}|\s)"  placeholder="输入单张发票号码或多张,使用分隔符 -或,"  />
 					</td>
 			</tr>
 			<tr>
@@ -249,20 +249,22 @@ if (!isset($_POST['ExportExcel'])){
 		$sql="SELECT	invno,
 						invtype,
 						a.tag,
-						transno,
+						a.transno,
+					     c.typeno,
 						period,
 						invdate,
-						amount,
+						a.amount,
 						tax,
 						currcode,
-						toregisterno registerno,
+						toregisterno ,
 						toaccount,
 						toname,
 						custname,
 						remark,
 						a.flg
 				FROM	invoicetrans a
-				     LEFT JOIN `custname_reg_sub` b ON b.registerno=a.toregisterno 
+					LEFT JOIN `custname_reg_sub` b ON b.registerno=a.toregisterno 
+					LEFT JOIN gltypenotag c ON a.period=c.periodno AND a.transno=c.transno				
 				WHERE  a.tag = " . $tag .  " " ;
 									 
 		if ($_POST['InvType']!=-1){
@@ -305,10 +307,10 @@ if (!isset($_POST['ExportExcel'])){
 			$SearchStr = '%'.$str .'%';
 			$sql.= ' AND ( toname  like "'.$SearchStr.'"  OR custname  LIKE  "'.$SearchStr.'" )';
 		}
-		$sql.="	ORDER BY invtype, tax/amount,invdate ";  
-	     //echo $sql;
+		$sql.="	ORDER BY invtype, a.tax/a.amount,invdate ";  
+	    // echo $sql;
 	}elseif($_POST['prdrange']==12||$_POST['prdrange']==3){
-		//年度季度查询
+		//年度度查询
 		$sql="SELECT invtype,  period, SUM(amount) amount, SUM(tax) tax 
 		       FROM invoicetrans 
 		        WHERE tag=" . $tag . " 
@@ -324,7 +326,7 @@ if (isset($_POST['ExportExcel'])){
 		$options = array("print"=>true);//,"setWidth"=>$setWidth);
 		$TitleData=array("Title"=>'发票清单',"TitleDate"=>$dt,"coyname"=>$_SESSION['CompanyRecord'][1]['coyname'],"Units"=>"元","k"=>3,"AmountTotal"=>json_encode($AmoTotal));	
 	
-		 $Header=array( '序号', '物料编码', '物料名称', '仓库', '物料组', '账面数', '盘点数', '摘要', '盘点日期' );	
+		 $Header=array( '序号', '发票号码', '发票日期', '会计期间','发票类别', '金额', '税金', '税率', '物品名称', '规格','数量','单位','客户名','凭证号' );	
 		DB_data_seek($result,0);	  
 		ExportExcel($result,$Header,$TitleData,$options);
 }
@@ -400,12 +402,11 @@ if (isset($_POST['Search'])	OR  isset($_POST['Go'])	OR isset($_POST['Next'])
 				<th class="ascending">金额</th>
 				<th class="ascending">税金</th>				
 				<th class="ascending">税率</th>
-				<th >产品名称</th>
+				<th >物品名称</th>
 				<th >规格</th>   
 				<th >数量</th>
 				<th >单位</th>
-				<th class="ascending">客户名/科目编码</th>	
-						
+				<th class="ascending">客户名</th>							
 				<th >凭证号</th>			
 			
 			</tr>';	
@@ -425,7 +426,7 @@ if (isset($_POST['Search'])	OR  isset($_POST['Go'])	OR isset($_POST['Next'])
 			$InvType=-1;
 			$TranNoGL=0;
 			$TransNoArr=array();	
-			//---------添加清除对应科目和选择代码
+			//---------添清除对应科目和选择代码
 			$SQL="SELECT currabrev, round(rate,decimalplaces) rate FROM currencies";
 			$Result=DB_query($SQL);		
 			$CurrRate=array();
@@ -444,17 +445,28 @@ if (isset($_POST['Search'])	OR  isset($_POST['Go'])	OR isset($_POST['Next'])
 				$subject='';
 				$subname='';
 				$AubAnalysis=0;	
-				$RegID=0;			
+				$RegID=0;	
+				$TranNoGL=0;		
 				if ($myrow['transno']>0){//已经录入凭证并核对
 					$TransType =2;
 					$TranNoGL=$myrow['transno'];
 					$TranMsg=GetTransContent($myrow['period'],$myrow['transno']);
 				}
 				if (empty($myrow['toname'])){
-					$custname='';
+					if (!isset($SearchCust[$myrow['toregisterno']])){
+						$SQL="SELECT `regid`, `registerno`, `custname` FROM `custname_reg_sub` WHERE registerno='".$myrow['toregisterno']."'";
+						$Result=DB_query($SQL);
+						$ROW=DB_fetch_assoc($Result);
+						if (!empty($ROW['custname'])){
+							$SearchCust[$myrow['toregisterno']]=$ROW['custname'];
+							
+						}
+					}
+					$custname=$SearchCust[$myrow['toregisterno']];
 				}else{
 					$custname=$myrow['toname'];
 				}
+			
 				//摘要自动写入 缺少外币写入
 				if ($myrow['invtype']==0){
 						
@@ -469,7 +481,7 @@ if (isset($_POST['Search'])	OR  isset($_POST['Go'])	OR isset($_POST['Next'])
 				}elseif ($myrow['invtype']==3){
 					$msg=$myrow['toname'].'`销售普票号;'.$myrow['invno'].";";
 				}
-				//按税率合计	
+				//按税率合	
 					if (( ($InvType!=(int)$myrow['invtype']&&(int)$TaxRate==(int)round(100*(float)$myrow['tax']/(float)$myrow['amount'],0) )||(int)$TaxRate!=(int)round(100*(float)$myrow['tax']/(float)$myrow['amount'],0) )&& $TaxRate>=0 ) {
 						echo'<tr>
 								<th ></th>			
@@ -546,13 +558,14 @@ if (isset($_POST['Search'])	OR  isset($_POST['Go'])	OR isset($_POST['Next'])
 					<td></td>
 					<td></td>
 					<td>'.$custname.'</td>';
-				$URL_CrtJournal = $RootPath . '/PDFTrans.php?JournalNo='.$myrow['period'].'^'.$TranNoGL;
+				$URL_GLDetail = $RootPath . '/PDFTrans.php?JournalNo='.$myrow['period'].'^'.$TranNoGL;
 				if ($TranNoGL==0){
-					echo'<td ><a href="'. $URL_CrtJournal.'"  id="href'.$RowIndex.'" name="href'.$RowIndex.'" title="注册码['.$myrow['registerno'].']'.$myrow['toname'].'"  >无</a></td>	';
-					//echo '<td><a href="'.$URL_to_TransDetail.'" title="手动生会计凭证"  target="_blank" >成</a></td>';
+					echo'<td  title="注册码['.$myrow['toregisterno'].']'.$myrow['toname'].'"  >无</td>	';
+				
 				}else{
+				
 					echo'<td >
-						<a href="'.$URL_to_TransDetail.'" title="'.$TranMsg.'" target="_blank" >'.$TranNoGL.'</a>
+						<a href="'.$URL_GLDetail.'" title="'.$TranMsg.'" target="_blank" >['.$TranNoGL.']'.$_SESSION['tagref'][$myrow['tag']][2].$myrow['typeno'].'</a>
 					</td>';			
 				}
 				
@@ -830,9 +843,9 @@ include ('includes/footer.php');
    *                           bool   setBorder   设置单元格边框
    *                           array  mergeCells  设置合并单元格，例如['A1:J1' => 'A1:J1']
    *                           array  formula     设置公式，例如['F2' => '=IF(D2>0,E42/D2,0)']
-   *                           array  format      设���格式，整列设置，例如['A' => 'General']
+   *                           array  format      设格式，整列设置，例如['A' => 'General']
    *                           array  alignCenter 设置居中样式，例如['A1', 'A2']
-   *                           array  bold        ��置加粗样式，例如['A1', 'A2']
+   *                           array  bold        置加粗样式，例如['A1', 'A2']
    *                           string savePath    保存路径，设置后则文件保存到服务器，不通过浏览器下载
    */	
   function ExportExcel($Result,$header,$titledata,$options){
@@ -846,6 +859,7 @@ include ('includes/footer.php');
 		//设置sheet的名字  两种方法
 		$sheet->setTitle($titledata['Title']);
 		$spreadsheet->getActiveSheet()->setTitle($titledata['Title']);
+		$InvType=array(0=>'进项专票',2=>'采购普票',1=>'销项发票',3=>'销项普票',5=>'销项0税率普票');
 			//设置默认文字居左，上下居中 
 		$styleArray = [
 			'alignment' => [
@@ -875,12 +889,12 @@ include ('includes/footer.php');
 		//将A1至D1单元格设置成粗体
 		//$sheet->getStyle('A1:'.Coordinate::stringFromColumnIndex($columnCnt).'1')->getFont()->setBold(true);
 
-		//将A1单元格设置成粗体，黑体，10号字
+		//将A1单元格设置成粗体，黑，10号字
         $sheet->getStyle('A1')->getFont()->setBold(true)->setName('黑体')->setSize(14);
 
 		$sheet->setCellValue('A1',  (string)$titledata['Title']); 
 		$sheet->setCellValue('D2',  (string)$titledata['TitleDate']); 
-		$sheet->setCellValue('A'.$k, "公司名���:". (string)$titledata['coyname']); 
+		$sheet->setCellValue('A'.$k, "公司名称:". (string)$titledata['coyname']); 
 		$sheet->setCellValue(Coordinate::stringFromColumnIndex($columnCnt).($k),  "单位：".(string)$titledata['Units']); 
 		//设置默认行高
 		$sheet->getDefaultRowDimension()->setRowHeight(20);
@@ -914,10 +928,11 @@ include ('includes/footer.php');
 		$activeSheet->getStyle('A'.(int)($k).':'.Coordinate::stringFromColumnIndex($columnCnt).($k+$rowCnt))->applyFromArray($styleArray);
 		  /* 设置宽度 */
 		$activeSheet->getColumnDimension('B')->setWidth(15);		
-		$activeSheet->getColumnDimension('C')->setWidth(30);
-		$activeSheet->getColumnDimension('D')->setWidth(15);
-		$activeSheet->getColumnDimension('H')->setWidth(30);
-		$activeSheet->getColumnDimension('I')->setWidth(20);
+		$activeSheet->getColumnDimension('C')->setWidth(10);
+		$activeSheet->getColumnDimension('D')->setWidth(10);
+		$activeSheet->getColumnDimension('E')->setWidth(10);
+		$activeSheet->getColumnDimension('M')->setWidth(30);
+		$activeSheet->getColumnDimension('N')->setWidth(10);
 		//		$activeSheet->getColumnDimension('D')->setAutoSize(true);
 	
 		//$activeSheet->getColumnDimension('F')->setWidth(15);
@@ -934,7 +949,25 @@ include ('includes/footer.php');
 		$k++;
 		$rw=$k-1;
 	while ($row = DB_fetch_array($Result)){
-
+		//$custname=$row['toname'];
+		if (empty($row['toname'])){
+			if (!isset($SearchCust[$row['registerno']])){
+				$SQL="SELECT `regid`, `registerno`, `custname` FROM `custname_reg_sub` WHERE registerno='".$row['toregisterno']."'";
+				$custResult=DB_query($SQL);
+				$ROW=DB_fetch_assoc($custResult);
+				if (!empty($ROW['custname'])){
+					$SearchCust[$row['toregisterno']]=$ROW['custname'];
+					
+				}
+			}
+			$custname=$SearchCust[$row['toregisterno']];
+		}else{
+			$custname=$row['toname'];
+		}
+		if ($row['period']!=$prd){
+			$invdate=substr(PeriodGetDate($row['period']),0,7);
+			$prd=$row['period'];
+		}
 		for ($_column = 1; $_column <= $columnCnt; $_column++) {
 			$cellName = Coordinate::stringFromColumnIndex($_column);
 			$cellId   = $cellName . ($k);			
@@ -943,23 +976,33 @@ include ('includes/footer.php');
 			
 				$sheet->setCellValue($cellName.($k), $k-$rw); 
 			}else{
-			
+			// invno, invtype, a.tag, a.transno, c.typeno, period, invdate, a.amount, tax, currcode, toregisterno registerno, toaccount, toname, custname, remark, a.flg
+			//	 $Header=array( '序号', '发票号码', '发票日期', '会计期间','发票类别', '金额', '税金', '税率', '物品名称', '规格','数量','单位','客户名','凭证号' );	
 				if ($_column==2){					
-					$sheet->setCellValue($cellName.($k), (string)$row['stockid']);
+					$sheet->setCellValue($cellName.($k), (string)$row['invno']);
 				}elseif ($_column==3){					
-					$sheet->setCellValue($cellName.($k), (string)$row['description']);
+					$sheet->setCellValue($cellName.($k), (string)$row['invdate']);
 				}elseif ($_column==4){					
-					$sheet->setCellValue($cellName.($k), (string)$row['loccode']);
+					$sheet->setCellValue($cellName.($k), $invdate);
 				}elseif ($_column==5){					
-					$sheet->setCellValue($cellName.($k), (string)$row['categoryid']);
+					$sheet->setCellValue($cellName.($k), $InvType[$row['invtype']]);
 				}elseif ($_column==6){					
-					$sheet->setCellValue($cellName.($k), (float)$row['qoh']);
+					$sheet->setCellValue($cellName.($k), (float)$row['amount']);
 				}elseif ($_column==7){					
-					$sheet->setCellValue($cellName.($k), (float)$row['qtycounted']);
+					$sheet->setCellValue($cellName.($k), (float)$row['tax']);
 				}elseif ($_column==8){					
-					$sheet->setCellValue($cellName.($k), (string)$row['reference']);
-				}elseif ($_column==9){					
-					$sheet->setCellValue($cellName.($k), (string)$row['stockcheckdate']);
+					$sheet->setCellValue($cellName.($k), (string)((round($row['tax']/$row['amount']*100))."%"));
+				}elseif ($_column==13){					
+					$sheet->setCellValue($cellName.($k), (string)$custname);
+				}elseif ($_column==14){	
+					if ($row['transno']==0){
+						$GLTransNo='';
+					}else{
+						$GLTransNo=$row['transno'].$_SESSION['tagref'][$row['tag']][2].$row['typeno'];
+					}			
+					$sheet->setCellValue($cellName.($k), (string)$GLTransNo);
+				}else{					
+					$sheet->setCellValue($cellName.($k), '');
 				}
 			}
 		
@@ -1030,6 +1073,8 @@ function  GetTransContent($period,$transno){
 
 	$SQL="SELECT transno, 
 				 trandate,
+				 typeno,
+				 gltrans.tag,
 				 account,
 				 accountname,
 				 narrative,
@@ -1052,7 +1097,7 @@ function  GetTransContent($period,$transno){
 	while($Row=DB_fetch_array($Result)){
 	
 		
-		if($Row['flg']==1){//数据为
+		if($Row['flg']==1){//据为
 			if($Row['amount']>0){
 				$jdstr="借 ".$Row['amount'];
 			}else{
