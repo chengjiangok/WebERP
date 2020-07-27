@@ -33,7 +33,7 @@ class MYPDF extends TCPDF {
 	 //JournalPDF函数使用PDFJournalPDF替代  使用GLJournalPrint也需要升级 20200723
 	 //大于15行没有完成
 	// 打印行数可变改变$prtformat=10-15行 格式可变A4 A5  
-	public function PDFJournal($Result,$header,$period,$prtformat,$tagsgroup) {
+	public function PDFJournal($Result,$header,$period,$prtformat,$TagsGroup) {
 		// Data	
 	 $fill = 0;	
 	 $trn_arr=array();
@@ -48,7 +48,7 @@ class MYPDF extends TCPDF {
 	$TransRow=array_count_values($transrow);//凭证》行
     $PrintNo=array_count_values($printno);//打印号》行
 	$header = array(_('Sequence'), _('Date'), '凭证号', '摘要','附单',_('Account Code'), '总账科目/明细科目', _('Debits'), _('Credit'));
-	 
+	$tagsgroup=$TagsGroup[0]; 
 	// $TransRow=array_unique($trn_arr['printno']);//移除重复打印号        	
 	 $w = array(8, 12,12, 30,8,25,50,20,20);
 	 $num_headers = count($header); 
@@ -111,7 +111,7 @@ class MYPDF extends TCPDF {
 			$this->MultiCell(90, 10,'单位名称:'.stripslashes($_SESSION['CompanyRecord'][1]['coyname']),0,'L',false,0,15, $hy,true,0,false, true,0,'M',true);
 			$this->MultiCell(40, 10,'账期:'.substr($PeriodDate,0,7),0,'C',false,0,95, $hy,true,0,false, true,0,'M',true);
 			
-			$this->MultiCell(50, 10,'装订号:'.date('m',strtotime($PeriodDate)).'-'.$PrintNo,0,'R',false,1,150, $hy,true,0,false, true,0,'M',true);		
+			$this->MultiCell(50, 10,'装订号:['.$TagsGroup[1].']'.date('m',strtotime($PeriodDate)).'-'.$PrintNo,0,'R',false,1,140, $hy,true,0,false, true,0,'M',true);		
 			$this->SetX(15);
 			$this->setFontSize(9);		 	
 			for($j = 0; $j < $num_headers; $j++) {

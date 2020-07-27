@@ -222,7 +222,7 @@ if (isset($_POST['ShowSheet'])||isset($_POST['ImportExcel'])) {
 			      AND LEFT(account,4) IN (".implode(",",array_keys($ActTotal)).")  AND tag IN(".$_SESSION['tagsgroup'][$_POST['TagsGroup']][0]." )
 			GROUP BY  LEFT(account, 4);";
 	$Result=DB_query($SQL);
-
+  
 	while ($row=DB_fetch_array($Result)){
 		$ReportData[$row['account']]=array("BQAmoJ"=>$row['bqamoj'],"BQAmoD"=>$row['bqamod'],"BYAmoJ"=>$row['byamoj'],"BYAmoD"=>$row['byamod']);
 	}
@@ -444,8 +444,12 @@ if (isset($_POST['ShowSheet'])||isset($_POST['ImportExcel'])) {
 			   AND LEFT(account,4) IN('1122','2202','2241','1221')
 			   AND tag IN (".$_SESSION['tagsgroup'][$_POST['TagsGroup']][0]." )
 			   GROUP BY account  HAVING sum(sumamount(amount,periodno,0,$janprd-1)) <>0 OR sum(sumamount(amount,periodno,0,$endprd))<>0";
-		
+			 
 		$Result=DB_query($SQL);
+		$ReportSF["1122"]=array("QCAmo"=>0,"QmAmo"=>0);
+		$ReportSF["2202"]=array("QCAmo"=>0,"QmAmo"=>0);
+		$ReportSF["1221"]=array("QCAmo"=>0,"QmAmo"=>0);
+		$ReportSF["2241"]=array("QCAmo"=>0,"QmAmo"=>0);
 		while ($row=DB_fetch_array($Result)){
 			if (substr($row['account'],0,4)=='1122'){
 				if (round($row['qcamount'],POI)>0){
@@ -512,6 +516,8 @@ if (isset($_POST['ShowSheet'])||isset($_POST['ImportExcel'])) {
 			}
 		
 		}
+		//应收应付写入
+
 		foreach($ReportSF as $key=>$row){
 			$ReportData[$key]["QMAmo"]=$row['QMAmo'];
 			$ReportData[$key]["QCAmo"]=$row['QCAmo'];

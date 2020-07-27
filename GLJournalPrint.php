@@ -49,15 +49,16 @@ if (!isset($_POST['Print']) || !$PrintErr){
 		  		<td>';
 				  echo'<select name="TagsGroup" id="TagsGroup" size="1" >';
 		
-				foreach($_SESSION['tagsgroup'] as $key=>$row){
-				
-					if(isset($_POST['TagsGroup']) AND $key==$_POST['TagsGroup']){
-						echo '<option selected="selected" value="';			
-					}else{
-						echo '<option value="';
-					}
-					echo  $key. '">' .$row[2] . '</option>';
+		foreach($_SESSION['tagsgroup'] as $key=>$row){
+			if ($row[3]==1){
+				if(isset($_POST['TagsGroup']) AND $key==$_POST['TagsGroup']){
+					echo '<option selected="selected" value="';			
+				}else{
+					echo '<option value="';
 				}
+				echo  $key. '">' .$row[2] . '</option>';
+			}
+		}
 				  echo'</select>';	
 	   
    		echo'</td></tr>';     
@@ -363,7 +364,7 @@ if(isset($_POST['PrintShow']) ) {
 			// print colored table		
 	
 		
-			$pdf->PDFJournal($result,$header,$_POST['ERPPrd'],$prtformat,$_SESSION['tagsgroup'][$_POST['TagsGroup']][0]);
+			$pdf->PDFJournal($result,$header,$_POST['ERPPrd'],$prtformat,$_SESSION['tagsgroup'][$_POST['TagsGroup']]);
 		
 			// END OF FILE
 					ob_end_clean();

@@ -20,9 +20,9 @@ if (isset($_POST['JournalNo'])) {
 if ($str!='') {
 	$PrintNO=$str[1];
 	$periodno=$str[0];
-	$TagsGroup=$_SESSION['tagsgroup'][$str[2]][0];
+	$TagsGroup=$_SESSION['tagsgroup'][$str[2]];
 }
-//prnMsg($_GET['JournalNo'].$TagsGroup.'=');
+prnMsg($_GET['JournalNo'].$TagsGroup.'=');
 
 
 	
@@ -40,7 +40,7 @@ if ($str!='') {
 				LEFT JOIN chartmaster	ON gltrans.account=chartmaster.accountcode			
 				LEFT JOIN systypes	ON gltrans.type=systypes.typeid
 				WHERE gltrans.periodno='".$periodno."' 	AND abs(gltrans.printno)=" . $PrintNO . "
-				   AND gltrans.tag IN ( ".$TagsGroup." )	 ORDER BY abs(gltrans.printno),gltrans.typeno";
+				   AND gltrans.tag IN ( ".$TagsGroup[0]." )	 ORDER BY abs(gltrans.printno),gltrans.typeno";
 	//echo $sql;
 //	LEFT JOIN tags	ON gltrans.tag=tags.tagref
 $result = DB_query($sql);//,$ErrMsg,_('The SQL that failed was'),true);		
