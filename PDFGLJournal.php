@@ -10,7 +10,7 @@
  */
 
 include('includes/session.php');
-
+include('includes/tcpdf/PDFJournal.php');
 if (isset($_POST['JournalNo'])) {
 	$str=explode('^',$_POST['JournalNo']);
 }else if (isset($_GET['JournalNo'])) {
@@ -18,11 +18,13 @@ if (isset($_POST['JournalNo'])) {
  
 } 
 if ($str!='') {
-	$JournalNo=$str[1];
+	$PrintNO=$str[1];
 	$periodno=$str[0];
+	$TagsGroup=$_SESSION['tagsgroup'][$str[2]][0];
 }
+//prnMsg($_GET['JournalNo'].$TagsGroup.'=');
 
-include('includes/tcpdf/PDFJournal.php');
+
 	
 	$sql="SELECT gltrans.typeno,
 					systypes.typename,
@@ -35,14 +37,15 @@ include('includes/tcpdf/PDFJournal.php');
 					toamount(gltrans.amount,-1,0,0,1,gltrans.flg) AS Debits,
 					toamount(gltrans.amount,-1,0,0,-1,gltrans.flg) AS Credits		
 				FROM gltrans
-				LEFT JOIN chartmaster	ON gltrans.account=chartmaster.accountcode
-				LEFT JOIN tags	ON gltrans.tag=tags.tagref
+				LEFT JOIN chartmaster	ON gltrans.account=chartmaster.accountcode			
 				LEFT JOIN systypes	ON gltrans.type=systypes.typeid
-				WHERE gltrans.periodno='".$periodno."' 	AND abs(gltrans.printno)='" . $JournalNo . "'			
-				ORDER BY abs(gltrans.printno),gltrans.transno";
-	
-
-$result = DB_query($sql,$ErrMsg,_('The SQL that failed was'),true);		
+				WHERE gltrans.periodno='".$periodno."' 	AND abs(gltrans.printno)=" . $PrintNO . "
+				   AND gltrans.tag IN ( ".$TagsGroup." )	 ORDER BY abs(gltrans.printno),gltrans.typeno";
+	//echo $sql;
+//	LEFT JOIN tags	ON gltrans.tag=tags.tagref
+$result = DB_query($sql);//,$ErrMsg,_('The SQL that failed was'),true);		
+//prnMsg($sql);
+//exit;
 $row=DB_num_rows($result);
 if ($row>1){
 	/*$sql="SELECT  confvalue FROM myconfig WHERE confname='prtformat'";
@@ -89,21 +92,21 @@ $pdf->SetFont('droidsansfallback', '', 10);
 // add a page
 $pdf->AddPage();
 // column titles
-$header = array(_('Sequence'), _('Date'), _('Voucher No'), _('Abstract'),_('Account Code'), _('Detailed Account'), _('Debits'), _('Credit'));
+$header ='';// array(_('Sequence'), _('Date'), _('Voucher No'), _('Abstract'),_('Account Code'), _('Detailed Account'), _('Debits'), _('Credit'));
 // print colored table		
-$pdf->JournalPDF($header,$result,$SelectDate,$prtformat);
+$pdf->PDFJournal($result,$header,$periodno,$prtformat,$TagsGroup);
 // END OF FILE
 		ob_end_clean();
 			// close and output PDF document
 			$ym= date('Y-m',strtotime('-'.($_SESSION['period']-$periodno).' Month',strtotime($_SESSION['lastdate'])));
-			$pdffilename=$ym.'会计凭证打印号'.$JournalNo.'.pdf';
+			$pdffilename=$ym.'会计凭证打印号'.$PrintNO.'.pdf';
 		
 			$pdf->Output($pdffilename,'D');
 			$pdf->__destruct();
 
-			$sql="update  gltrans set printno=abs(printno) where  periodno=".$periodno." and abs(printno)=".$JournalNo." printno<0";
+		//	$sql="update  gltrans set printno=abs(printno) where  periodno=".$periodno." and abs(printno)=".$PrintNO." printno<0";
 		
-			$result = DB_query($sql);
+		//	$result = DB_query($sql);
 	
 	//exit;
 }
