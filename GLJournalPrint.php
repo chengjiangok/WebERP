@@ -26,14 +26,15 @@ if (!isset($_POST['selectprint']) OR $_POST['selectprint']==''){
 $PrintErr=true;
 $msg='';
 if (!isset($_POST['TagsGroup'])){
-	$_POST['TagsGroup']=$_SESSION['tagsgroup'][1][0]; 		 		
+	$_POST['TagsGroup']=1;//$_SESSION['tagsgroup'][1][0]; 		 		
  }
 if (!isset($_POST['Print']) || !$PrintErr){
 	include('includes/header.php');
 	echo '<p class="page_title_text">
 			<img src="'.$RootPath.'/css/'.$Theme.'/images/printer.png" title="' . $Title . '" alt="" />' . ' ' . $Title . '</p>';
 	echo '<form method="post" action="' . htmlspecialchars($_SERVER['PHP_SELF'],ENT_QUOTES,'UTF-8') . '">
-				<input type="hidden" name="selectprint" value="' . $_POST['selectprint'] . '" />	
+				<input type="hidden" name="selectprint" value="' . $_POST['selectprint'] . '" />
+				<input type="hidden" name="TagsGroup" value="' . $_POST['TagsGroup'] . '" />	
 			<input type="hidden" name="selectperiod" value="' . $_POST['selectperiod'] . '" />';
 
 		echo '<input type="hidden" name="FormID" value="' . $_SESSION['FormID'] . '" />';
@@ -50,17 +51,13 @@ if (!isset($_POST['Print']) || !$PrintErr){
 		
 				foreach($_SESSION['tagsgroup'] as $key=>$row){
 				
-					 
-						   if(isset($_POST['TagsGroup']) AND $key==$_POST['TagsGroup']){
-							  echo '<option selected="selected" value="';			
-						  }else{
-							  echo '<option value="';
-						  }
-						  echo  $key. '">' .$row[2] . '</option>';
-							
-						 
-					  
-				  }
+					if(isset($_POST['TagsGroup']) AND $key==$_POST['TagsGroup']){
+						echo '<option selected="selected" value="';			
+					}else{
+						echo '<option value="';
+					}
+					echo  $key. '">' .$row[2] . '</option>';
+				}
 				  echo'</select>';	
 	   
    		echo'</td></tr>';     
@@ -81,27 +78,32 @@ if (!isset($_POST['Print']) || !$PrintErr){
 					<input type="submit" name="PrintShow" value="查询已打印" /> ';	            
 		echo'</div>';  	
 }
+//echo ($_SESSION['tagsgroup'][$_POST['TagsGroup']][0]);
+//exit;
 if (isset($_POST['Print'])||isset($_POST['PrintCheck'])){
+	//prnMsg($_POST['ERPPrd'].'='.$_SESSION['tagsgroup'][$_POST['TagsGroup']][0].'-'.$PrtErr);
 	$sql="SELECT  confvalue FROM myconfig WHERE confname='prtformat'";
 			$Result=DB_query($sql);
 			$row=DB_fetch_row($Result);		
 	$prtformat = json_decode($row[0],true);
 	$PrtErr=JournalPrtNo($_POST['ERPPrd'],$_SESSION['tagsgroup'][$_POST['TagsGroup']][0],$prtformat['prtrow']);	
-	//
+
 	if ($PrtErr!=0){
 		$PrintErr=false;
-		//prnMsg($_POST['ERPPrd'].'='.$PrtErr);
+		//
 	}
 	if ( $_POST['selectprint']==1 && $PrintErr){//默认打印   
-		//prnMsg($_POST['ERPPrd'].'='.$PrtErr);
-		$Sql="SELECT DISTINCT transno 													
+		
+		$Sql="SELECT DISTINCT typeno 													
 				FROM  gltrans						
-				WHERE  periodno=".$_POST['ERPPrd']." ORDER BY transno";
+				WHERE  gltrans.tag IN (".$_SESSION['tagsgroup'][$_POST['TagsGroup']][0].")	AND gltrans.periodno=".$_POST['ERPPrd']." ORDER BY transno ";
+			//	WHERE  periodno=".$_POST['ERPPrd']." ";
+		
 		$Result=DB_query($Sql);
 		$rw=1;
 		$msg='';
 		while ($row=DB_fetch_array($Result)) {
-			if ((int)$rw!=(int)$row['transno']){
+			if ((int)$rw!=(int)$row['typeno']){
 				$msg.=(string)$rw.',';
 				$rw++;
 			}			
@@ -111,11 +113,19 @@ if (isset($_POST['Print'])||isset($_POST['PrintCheck'])){
 			$PrintErr=false;
 		}
 	}	
-}	
+}
+//prnMsg("115");	
 if (!$PrintErr){	
+	include('includes/header.php');
 	prnMsg($msg.' 缺号,不能进行凭证打印!','info');
-}	
+	echo '<a href="' .$RootPath. '/GLJournalPrint.php">返回</a>';
+	echo '</form>';
+	include('includes/footer.php');
+	exit;
+}		
    $LastDate=PeriodGetDate($_POST['ERPPrd']);
+  // print_r(
+      // echo ($_SESSION['tagsgroup'][$_POST['TagsGroup']][0]);
 if(isset($_POST['PrintShow']) ) {
      
 				$SQL="SELECT gltrans.typeno,
@@ -138,7 +148,7 @@ if(isset($_POST['PrintShow']) ) {
 								LEFT JOIN systypes
 								ON gltrans.type=systypes.typeid
 							WHERE gltrans.periodno=".$_POST['ERPPrd']."	
-							      AND gltrans.tag IN (".$_POST['TagsGroup'].")	
+							      AND gltrans.tag IN ( ".$_SESSION['tagsgroup'][$_POST['TagsGroup']][0]." )	
 							ORDER BY gltrans.printno,gltrans.transno";
 				$transResult = DB_query($SQL);
 
@@ -171,7 +181,7 @@ if(isset($_POST['PrintShow']) ) {
 					$r=1;
 				}
 				echo '<td>' .  ConvertSQLDate($myrow['trandate']) . '</td>
-				      <td title="记字'. $myrow['transno'].'">' .$_SESSION['tagref'][$myrow['tag']][2].$myrow['typeno']. '</td>';
+				      <td title="'. $myrow['transno'].'">[' .$myrow['transno'].']'.$_SESSION['tagref'][$myrow['tag']][2].$myrow['typeno']. '</td>';
                
 			}else{
 				if ($r==1){
@@ -198,7 +208,7 @@ if(isset($_POST['PrintShow']) ) {
 							$LastPrint = $myrow['printno'];	
 							
 							if ($myrow['printno']!=0 ){
-								echo '<td class="number"><a href="PDFGLJournal.php?JournalNo='.$myrow['periodno'].'^'.abs($myrow['printno']).'">' . _('Print')  . abs($myrow['printno']).'</a></td></tr>';
+								echo '<td class="number"><a href="PDFGLJournal.php?JournalNo='.$myrow['periodno'].'^'.abs($myrow['printno']).'^'.$_POST['TagsGroup'].'">' . _('Print') .'</a></td></tr>';
 							}else{
 								echo '<td>'._('No').'</td></tr>';
 						
@@ -212,7 +222,7 @@ if(isset($_POST['PrintShow']) ) {
 	
 }elseif (isset($_POST['Print']) && $PrintErr  ) {
 	
-
+  //prnMsg('224');
 	include('includes/tcpdf/PDFJournal.php');	
 	if ( $_POST['selectprint']==1){//默认打印  
 		
@@ -231,7 +241,7 @@ if(isset($_POST['PrintShow']) ) {
 				LEFT JOIN chartmaster	ON gltrans.account=chartmaster.accountcode
 				LEFT JOIN tags	ON gltrans.tag=tags.tagref
 				LEFT JOIN systypes	ON gltrans.type=systypes.typeid
-				WHERE gltrans.printno<>0 and gltrans.periodno=".$_POST['ERPPrd'];
+				WHERE gltrans.printno<>0   AND gltrans.tag IN ( ".$_SESSION['tagsgroup'][$_POST['TagsGroup']][0]." )	AND gltrans.periodno=".$_POST['ERPPrd'];
 		if (isset($_SESSION['Audit']) and $_SESSION['Audit']>0){//是否审核后打印
 			$sql.=" AND prtchk=2 ";  
 		}	 
@@ -278,6 +288,7 @@ if(isset($_POST['PrintShow']) ) {
 						gltrans.account,
 						chartmaster.accountname,
 						gltrans.narrative,
+						chequeno,
 						toamount(gltrans.amount,-1,0,0,1,gltrans.flg) AS Debits,
 						toamount(gltrans.amount,-1,0,0,-1,gltrans.flg) AS Credits,
 						gltrans.tag		
@@ -285,13 +296,16 @@ if(isset($_POST['PrintShow']) ) {
 					LEFT JOIN chartmaster	ON gltrans.account=chartmaster.accountcode
 					LEFT JOIN tags	ON gltrans.tag=tags.tagref
 					LEFT JOIN systypes	ON gltrans.type=systypes.typeid
-					WHERE   gltrans.printno in (".$strno.") and gltrans.printno !=0 and gltrans.periodno=".$_POST['ERPPrd']."
-					ORDER BY abs(gltrans.printno),gltrans.transno";
+					WHERE   gltrans.printno in (".$strno.") AND gltrans.printno !=0 
+					  AND gltrans.tag IN ( ".$_SESSION['tagsgroup'][$_POST['TagsGroup']][0]." )	
+					  AND gltrans.periodno=".$_POST['ERPPrd']."
+					ORDER BY abs(gltrans.printno),gltrans.typeno";
 		
 	}
 		$result = DB_query($sql,$ErrMsg,_('The SQL that failed was'),true);		
 		$row=DB_num_rows($result);
-	     //prnMsg($sql.'row'.$row);
+		//prnMsg($sql);
+		//exit;
 		if ($row>1){
 			$sql="SELECT  confvalue FROM myconfig WHERE confname='prtformat'";
 			$Result=DB_query($sql);
@@ -307,7 +321,7 @@ if(isset($_POST['PrintShow']) ) {
 			$pdf = new MYPDF($prtformat['lp'], PDF_UNIT, $prtformat['format'], true, 'UTF-8', false);
 			// set document information
 			$pdf->SetCreator(PDF_CREATOR);
-			$pdf->SetAuthor('北京��经纬');
+			$pdf->SetAuthor('北京国经纬');
 			$pdf->SetTitle( '会计凭证打印');
 			$pdf->SetSubject( _('Account Vouche') );
 			$pdf->SetKeywords('TCPDF, PDF');
@@ -345,13 +359,16 @@ if(isset($_POST['PrintShow']) ) {
 			// add a page
 			$pdf->AddPage();
 			// column titles
-			$header = array(_('Sequence'), _('Date'), '凭证号', '摘要',_('Account Code'), '总账科目/明细科目', _('Debits'), _('Credit'));
+			$header ="";// array(_('Sequence'), _('Date'), '凭证号', '摘要','附单',_('Account Code'), '总账科目/明细科目', _('Debits'), _('Credit'));
 			// print colored table		
-			$pdf->JournalPDF($header,$result,$LastDate,$prtformat,$_SESSION['tagsgroup'][$_POST['TagsGroup']]);
+	
+		
+			$pdf->PDFJournal($result,$header,$_POST['ERPPrd'],$prtformat,$_SESSION['tagsgroup'][$_POST['TagsGroup']][0]);
+		
 			// END OF FILE
 					ob_end_clean();
 						// close and output PDF document
-						$pdffilename='会计凭证'.substr($LastDate,0,7).'.pdf';
+						$pdffilename=$_SESSION['CompanyRecord'][1]['unitstab'].'会计凭证'.substr($LastDate,0,7).'.pdf';
 						$pdf->Output($pdffilename,'D');
 							/*PDF输出的方式。I，默认值，在浏览器中打开；D，点击下载按钮， PDF文件会被下载下来；F，文件会被保存在服务器中；S，PDF会以字符串形式输出；E：PDF以邮件的附件输出。 */
 			
@@ -471,13 +488,14 @@ function WritePrtNo($prd,$tagsgroup,$trn_){
 		  AND tag IN (".$tagsgroup.")";
 	$result = DB_query($sql);
 	$rowprt = DB_fetch_assoc($result);
-	$prtno=-(abs($rowprt['printno'])+1); 
+	$prtno=abs($rowprt['printno'])+1; 
 	$sql="set sql_safe_updates=0";
 	$result = DB_query($sql); 
 	//$sql="update  gltrans set printno=".$prtno." where  periodno=".$prd." and transno in (".$trn_.")";
 	$sql="UPDATE  gltrans SET printno=".$prtno." 
 	       WHERE  periodno=".$prd." 
-		   AND typeno IN (".$trn_.")";
+		   AND typeno IN (".$trn_.")
+		   AND tag IN (".$tagsgroup.")";
 	$ErrMsg = _('Cannot Update a GL entry for the payment using the SQL');
 	$result = DB_query($sql,$ErrMsg,_('The SQL that failed was'),true);
 	return 1;	
