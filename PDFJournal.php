@@ -157,7 +157,8 @@ class MYPDF extends TCPDF {
 				}
 					//$a=0;			
 					$js+=$row['Debits']; 
-					$ds+=$row['Credits']; 				
+					$ds+=$row['Credits']; 
+				
 					$a = $a+1;				
 					$this->MultiCell($w[5], 6.5, $row['account'],'RB','J',$fill,0,15+$w[0]+$w[1]+$w[2]+$w[3]+$w[4], $hr,true,0,false, true,0,'M',true);
 					$this->MultiCell($w[6], 6.5, $row['accountname'],'RB','J',$fill,0,15+$w[0]+$w[1]+$w[2]+$w[3]+$w[4]+$w[5], $hr,true,0,false, true,0,'M',true);
@@ -171,8 +172,8 @@ class MYPDF extends TCPDF {
 						$this->MultiCell($w[4], 6.5, $fd,'RB','C',$fill,0,15+$w[0]+$w[1]+$w[2]+$w[3],$this->GetY() ,true,0,false, true,0,'M',true);
 						$this->MultiCell($w[5], 6.5, '','RB','J',$fill,0,15+$w[0]+$w[1]+$w[2]+$w[3]+$w[4],$this->GetY(),true,0,false, true,0,'M',true);
 						$this->MultiCell($w[6], 6.5,'','RB','R',$fill,0,15+$w[0]+$w[1]+$w[2]+$w[3]+$w[4]+$w[5], $this->GetY(),true,0,false, true,0,'M',true);
-						$this->MultiCell($w[7], 6.5,locale_number_format($js,POI),'RB','R',$fill,0,15+$w[0]+$w[1]+$w[2]+$w[3]+$w[4]+$w[5]+$w[6], $this->GetY(),true,0,false, true,0,'M',true);
-						$this->MultiCell($w[8], 6.5,locale_number_format($ds,POI),'RB','R',$fill,0,15+$w[0]+$w[1]+$w[2]+$w[3]+$w[4]+$w[5]+$w[6]+$w[7], $this->GetY(),true,0,false, true,0,'M',true);
+						$this->MultiCell($w[7], 6.5,$js,'RB','R',$fill,0,15+$w[0]+$w[1]+$w[2]+$w[3]+$w[4]+$w[5]+$w[6], $this->GetY(),true,0,false, true,0,'M',true);
+						$this->MultiCell($w[8], 6.5,number_format($ds,POI,'.',','),'RB','R',$fill,0,15+$w[0]+$w[1]+$w[2]+$w[3]+$w[4]+$w[5]+$w[6]+$w[7], $this->GetY(),true,0,false, true,0,'M',true);
 						$this->Ln();
 						$this->SetX(15);
 						$this->Cell(50, 7, '会计主管:'.$_SESSION['CompanyRecord'][1]['regoffice4'], 0, 0, 'L', 0);
@@ -239,8 +240,8 @@ class MYPDF extends TCPDF {
 				$this->MultiCell($w[4], 6.5, $fd,'RB','C',$fill,0,15+$w[0]+$w[1]+$w[2]+$w[3],$this->GetY() ,true,0,false, true,0,'M',true);
 				$this->MultiCell($w[5], 6.5, '','RB','J',$fill,0,15+$w[0]+$w[1]+$w[2]+$w[3]+$w[4],$this->GetY(),true,0,false, true,0,'M',true);
 				$this->MultiCell($w[6], 6.5,'','RB','R',$fill,0,15+$w[0]+$w[1]+$w[2]+$w[3]+$w[4]+$w[5], $this->GetY(),true,0,false, true,0,'M',true);
-				$this->MultiCell($w[7], 6.5,locale_number_format($js,POI),'RB','R',$fill,0,15+$w[0]+$w[1]+$w[2]+$w[3]+$w[4]+$w[5]+$w[6], $this->GetY(),true,0,false, true,0,'M',true);
-				$this->MultiCell($w[8], 6.5,locale_number_format($ds,POI),'RB','R',$fill,0,15+$w[0]+$w[1]+$w[2]+$w[3]+$w[4]+$w[5]+$w[6]+$w[7], $this->GetY(),true,0,false, true,0,'M',true);
+				$this->MultiCell($w[7], 6.5,number_format($js,2,'.',','),'RB','R',$fill,0,15+$w[0]+$w[1]+$w[2]+$w[3]+$w[4]+$w[5]+$w[6], $this->GetY(),true,0,false, true,0,'M',true);
+				$this->MultiCell($w[8], 6.5,number_format($ds,2,'.',','),'RB','R',$fill,0,15+$w[0]+$w[1]+$w[2]+$w[3]+$w[4]+$w[5]+$w[6]+$w[7], $this->GetY(),true,0,false, true,0,'M',true);
 				$this->Ln();
 				$this->SetX(15);
 				$this->Cell(50, 7, '会计主管:'.$_SESSION['CompanyRecord'][1]['regoffice4'], 0, 0, 'L', 0);
